@@ -5,9 +5,9 @@ Standalone PoE Door Lock for ESPHome / HA
 
 **Features**
 
-TOTP Pin Codes
+[TOTP](https://github.com/NonaSuomy/esphome/tree/totp/esphome/components/totp) Pin Codes
 
-Auto-Lock via UDP to Sensor Panel
+Auto-Lock via UDP to [Sensor Panel](https://github.com/NonaSuomy/ESPHome-Standalone-Rack-Mount-Alarm-Panel)
 
 Delay knob macro for auto-lock
 
