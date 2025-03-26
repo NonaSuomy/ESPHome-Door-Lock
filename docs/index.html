@@ -10,6 +10,12 @@
         input, select {
             border: 1px solid #ccc;
         }
+        #ascii-qrcode {
+            font-family: monospace;
+            line-height: 1;
+            white-space: pre;
+            text-align: center;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-6">
@@ -114,7 +120,19 @@
 
             <div class="mt-6 text-center">
                 <p class="mb-4 font-semibold">QR Code:</p>
-                <div id="qrcode" class="mx-auto max-w-full h-auto border rounded flex justify-center items-center"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <div>
+                        <p class="mb-2">Graphical QR:</p>
+                        <div id="qrcode" class="mx-auto max-w-full h-auto border rounded flex justify-center items-center"></div>
+                    </div>
+                    <div>
+                        <p class="mb-2">ASCII QR:</p>
+                        <div 
+                            id="ascii-qrcode" 
+                            class="mx-auto max-w-full p-2 border rounded bg-gray-50 text-center overflow-x-auto"
+                        ></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -161,6 +179,32 @@
             return parts.join("");
         }
 
+        function generateASCIIQR(qr) {
+            const moduleCount = qr.getModuleCount();
+            let asciiQR = '';
+            
+            // Top border
+            asciiQR += '▛' + '▀'.repeat(moduleCount * 2) + '▜\n';
+            
+            for (let row = 0; row < moduleCount; row++) {
+                // Left border
+                asciiQR += '▌';
+                
+                for (let col = 0; col < moduleCount; col++) {
+                    // Use full block for dark modules, space for light modules
+                    asciiQR += qr.isDark(row, col) ? '██' : '  ';
+                }
+                
+                // Right border
+                asciiQR += '▐\n';
+            }
+            
+            // Bottom border
+            asciiQR += '▙' + '▄'.repeat(moduleCount * 2) + '▟';
+            
+            return asciiQR;
+        }
+
         function update() {
             var username = document.getElementById("name").value;
             var issuer = document.getElementById("issuer").value;
@@ -193,11 +237,20 @@
             
             // Generate QR Code
             var qrCodeDiv = document.getElementById('qrcode');
+            var asciiQRDiv = document.getElementById('ascii-qrcode');
+            
             qrCodeDiv.innerHTML = ''; // Clear previous QR code
+            asciiQRDiv.innerHTML = ''; // Clear previous ASCII QR code
+            
             var qr = qrcode(0, 'M');
             qr.addData(URI);
             qr.make();
+            
+            // Graphical QR
             qrCodeDiv.innerHTML = qr.createImgTag(5);
+            
+            // ASCII QR
+            asciiQRDiv.textContent = generateASCIIQR(qr);
         }
 
         // Add event listener for Enter key on secret input
