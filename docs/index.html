@@ -128,7 +128,10 @@
                         <p class="mb-2">Graphical QR:</p>
                         <div id="qrcode" class="mx-auto max-w-full h-auto border rounded flex justify-center items-center"></div>
                     </div>
-                    </ br>
+                    <div class="mt-4 p-2 bg-gray-100 border rounded text-sm break-all">
+                        <strong>QR Code Data:</strong>
+                        <p id="qr-data" class="mt-1 text-gray-600"></p>
+                    </div>
                     <div>
                         <p class="mb-2">ASCII QR:</p>
                         <div 
@@ -242,7 +245,8 @@
             // Generate QR Code
             var qrCodeDiv = document.getElementById('qrcode');
             var asciiQRDiv = document.getElementById('ascii-qrcode');
-            
+            var qrDataDiv = document.getElementById('qr-data'); // Get the new QR data element
+            qrDataDiv.textContent = URI; // Display the QR Code content
             qrCodeDiv.innerHTML = ''; // Clear previous QR code
             asciiQRDiv.innerHTML = ''; // Clear previous ASCII QR code
             
