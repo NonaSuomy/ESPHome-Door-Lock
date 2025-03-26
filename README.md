@@ -13,6 +13,8 @@ Face Recognition - Frigate / Compreface / DoubleTake
 
 RFID PN523 - Yubikey TOTP NFC / Homekit Homekey
 
+LED Controls
+
 Piezo Speaker
 
 Limit Switches
