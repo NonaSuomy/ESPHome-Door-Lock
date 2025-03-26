@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Tool for TOTP Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <style>
+        input, select {
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-xl mx-auto bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-center">OTP Tool for TOTP Generator</h1>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block mb-2" for="name">Account Name:</label>
+                <input 
+                    type="text" 
+                    id="name" 
+                    class="w-full px-3 py-2 border rounded"
+                    value="john.doe@email.com"
+                >
+            </div>
+
+            <div>
+                <label class="block mb-2" for="issuer">Issuer:</label>
+                <input 
+                    type="text" 
+                    id="issuer" 
+                    class="w-full px-3 py-2 border rounded"
+                    value="TOTP Generator"
+                >
+            </div>
+
+            <div>
+                <label class="block mb-2" for="secret">Secret:</label>
+                <input 
+                    type="text" 
+                    id="secret" 
+                    maxlength="20" 
+                    class="w-full px-3 py-2 border rounded"
+                    placeholder="Enter your secret key"
+                >
+            </div>
+
+            <div>
+                <label class="block mb-2" for="algorithm">Algorithm:</label>
+                <select 
+                    id="algorithm" 
+                    class="w-full px-3 py-2 border rounded"
+                >
+                    <option value="SHA1">SHA1</option>
+                    <option value="SHA256">SHA256</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block mb-2" for="period">Period (in seconds):</label>
+                <input 
+                    type="number" 
+                    id="period" 
+                    min="1" 
+                    max="300" 
+                    value="30" 
+                    class="w-full px-3 py-2 border rounded"
+                >
+            </div>
+
+            <div class="text-center">
+                <button 
+                    onclick="update()" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+                >
+                    Generate
+                </button>
+            </div>
+
+            <div class="mt-6 space-y-4">
+                <div>
+                    <label class="block mb-2" for="hexarray">Arduino HEX Array:</label>
+                    <input 
+                        type="text" 
+                        id="hexarray" 
+                        readonly 
+                        class="w-full px-3 py-2 border rounded bg-gray-100"
+                    >
+                </div>
+
+                <div>
+                    <label class="block mb-2" for="keylength">Key Length:</label>
+                    <input 
+                        type="text" 
+                        id="keylength" 
+                        readonly 
+                        class="w-full px-3 py-2 border rounded bg-gray-100"
+                    >
+                </div>
+
+                <div>
+                    <label class="block mb-2" for="ga_code">Base32 Encoded Key:</label>
+                    <input 
+                        type="text" 
+                        id="ga_code" 
+                        readonly 
+                        class="w-full px-3 py-2 border rounded bg-gray-100"
+                    >
+                </div>
+            </div>
+
+            <div class="mt-6 text-center">
+                <p class="mb-4 font-semibold">QR Code:</p>
+                <div id="qrcode" class="mx-auto max-w-full h-auto border rounded flex justify-center items-center"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var baseenc = baseenc || {};
+ 
+        baseenc.b32encode = function(s) {
+            var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+            var parts = [];
+            var quanta = Math.floor((s.length / 5));
+            var leftover = s.length % 5;
+
+            if (leftover != 0) {
+                for (var i = 0; i < (5-leftover); i++) { s += '\x00'; }
+                quanta += 1;
+            }
+         
+            for (i = 0; i < quanta; i++) {
+                parts.push(alphabet.charAt(s.charCodeAt(i*5) >> 3));
+                parts.push(alphabet.charAt( ((s.charCodeAt(i*5) & 0x07) << 2)
+                                           | (s.charCodeAt(i*5+1) >> 6)));
+                parts.push(alphabet.charAt( ((s.charCodeAt(i*5+1) & 0x3F) >> 1) ));
+                parts.push(alphabet.charAt( ((s.charCodeAt(i*5+1) & 0x01) << 4)
+                                           | (s.charCodeAt(i*5+2) >> 4)));
+                parts.push(alphabet.charAt( ((s.charCodeAt(i*5+2) & 0x0F) << 1)
+                                           | (s.charCodeAt(i*5+3) >> 7)));
+                parts.push(alphabet.charAt( ((s.charCodeAt(i*5+3) & 0x7F) >> 2)));
+                parts.push(alphabet.charAt( ((s.charCodeAt(i*5+3) & 0x03) << 3)
+                                           | (s.charCodeAt(i*5+4) >> 5)));
+                parts.push(alphabet.charAt( ((s.charCodeAt(i*5+4) & 0x1F) )));
+            }
+
+            var replace = 0;
+            if (leftover == 1) replace = 6;
+            else if (leftover == 2) replace = 4;
+            else if (leftover == 3) replace = 3;
+            else if (leftover == 4) replace = 1;
+
+            for (i = 0; i < replace; i++) parts.pop();
+            for (i = 0; i < replace; i++) parts.push("=");
+
+            return parts.join("");
+        }
+
+        function update() {
+            var username = document.getElementById("name").value;
+            var issuer = document.getElementById("issuer").value;
+            var name = issuer + ":" + username;
+            
+            var algorithm = document.getElementById("algorithm").value;
+            var period = document.getElementById("period").value;
+            var secret = document.getElementById("secret").value;
+            
+            // count the key length
+            document.getElementById("keylength").value = secret.length;
+            
+            // create HEX array
+            var char_array = secret.split('');
+            var charcode_array = char_array.map(function (c) { return c.charCodeAt(0); });
+            var hex_array = '{';
+            for(i = 0; i < charcode_array.length; i++) {
+                if(i > 0) hex_array += ', ';
+                hex_array += '0x' + charcode_array[i].toString(16);
+            }
+            hex_array += '}';            
+            document.getElementById("hexarray").value = hex_array;
+            
+            // encode secret using base32
+            var base32Secret = baseenc.b32encode(secret);
+            document.getElementById("ga_code").value = base32Secret;
+            
+            // create otpauth URI
+            var URI = 'otpauth://totp/' + name + '?secret=' + base32Secret + '&issuer=' + issuer + '&algorithm=' + algorithm + '&period=' + period;
+            
+            // Generate QR Code
+            var qrCodeDiv = document.getElementById('qrcode');
+            qrCodeDiv.innerHTML = ''; // Clear previous QR code
+            var qr = qrcode(0, 'M');
+            qr.addData(URI);
+            qr.make();
+            qrCodeDiv.innerHTML = qr.createImgTag(5);
+        }
+
+        // Add event listener for Enter key on secret input
+        document.getElementById("secret").addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                update();
+            }
+        });
+    </script>
+</body>
+</html>
