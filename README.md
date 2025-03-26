@@ -1,6 +1,8 @@
 # ESPHome-PoE-TOTP-Door-Lock
 Standalone PoE Door Lock for ESPHome / HA
 
+![image](https://github.com/user-attachments/assets/1ce40b82-e158-4852-8764-35c7b0fdb3b9)
+
 **Features**
 
 TOTP Pin Codes
