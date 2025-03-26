@@ -1,6 +1,10 @@
 # ESPHome-PoE-TOTP-Door-Lock
 Standalone PoE Door Lock for ESPHome / HA
 
+Generate your ToTP code: https://nonasuomy.github.io/ESPHome-Door-Lock/
+
+You only need the "Base32 Encoded Key" to add to your secret file in esphome. Then scan the QR code into your Google Authenticator or other app like Yubico Authenticator.
+
 ![image](https://github.com/user-attachments/assets/1ce40b82-e158-4852-8764-35c7b0fdb3b9)
 
 **Features**
