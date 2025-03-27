@@ -48,3 +48,5 @@ https://github.com/user-attachments/assets/8c5ce937-d575-4ba7-a67f-deb81a605d14
 
 ![IMG_4808](https://github.com/user-attachments/assets/dffecc4f-ddcd-46fd-b395-2961e8ddc743)
 ![IMG_4807](https://github.com/user-attachments/assets/d9a0b240-5298-43ff-9a54-defecba8813a)
+
+Special thanks to the esphome crew in discord: ssieb, jesserockz, pzich
