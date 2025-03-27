@@ -15,17 +15,17 @@ Auto-Lock via UDP to [Sensor Panel](https://github.com/NonaSuomy/ESPHome-Standal
 
 Delay knob macro for auto-lock
 
-Face Recognition - Frigate / Compreface / DoubleTake
+Face Recognition - [Frigate](https://github.com/blakeblackshear/frigate) / [Compreface](https://github.com/exadel-inc/CompreFace) / [DoubleTake](https://github.com/skrashevich/double-take)
 
-RFID PN523 - Yubikey TOTP NFC / Homekit Homekey
+RFID [PN523](https://esphome.io/components/binary_sensor/pn532.html) - Yubikey TOTP NFC / Homekit Homekey
 
-LED Controls
+[LED Controls](https://esphome.io/components/output/ledc.html)
 
-Piezo Speaker
+[Piezo Speaker](https://esphome.io/components/rtttl.html)
 
-Limit Switches
+[Limit Switches](https://esphome.io/components/switch/)
 
-Motor Control
+[Motor Control](https://esphome.io/components/output/ledc.html)
 
 **Maybe Features**
 
