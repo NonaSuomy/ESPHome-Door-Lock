@@ -27,6 +27,8 @@ RFID [PN523](https://esphome.io/components/binary_sensor/pn532.html) - Yubikey T
 
 [Motor Control](https://esphome.io/components/output/ledc.html)
 
+[Car Door Lock Monitor](https://esphome.io/components/mqtt/)
+
 **Maybe Features**
 
 Palm Vein Scanner
