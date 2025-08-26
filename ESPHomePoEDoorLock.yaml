@@ -29,15 +29,16 @@ substitutions:
 
 esp32:
   board: esp32-s3-devkitc-1
+  flash_size: 16MB
   framework:
     #type: arduino
     type: esp-idf
-    version: 5.2.1
-    platform_version: 6.7.0
-    sdkconfig_options: 
-      CONFIG_COMPILER_OPTIMIZATION_SIZE: y 
-      CONFIG_LWIP_MAX_SOCKETS: "16"
-      CONFIG_MBEDTLS_HKDF_C: y 
+    version: 5.3.1
+    platform_version: 6.8.1
+    sdkconfig_options:
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_LWIP_MAX_SOCKETS: "8"
+      #CONFIG_MBEDTLS_HKDF_C: y
 
 esphome:
   name: ezhacklock
@@ -51,7 +52,8 @@ esphome:
     board_build.arduino.memory_type: qio_opi
     
 external_components:
-  - source: github://rednblkx/HAP-ESPHome@main
+#  - source: github://NonaSuomy/HAP-ESPHome@Fixes
+#    refresh: 0s
   - source:
       type: local
       path: components
@@ -67,7 +69,7 @@ logger:
   level: DEBUG
   #logs:
   #  udp: VERY_VERBOSE
-    #sensor: NONE
+  #  sensor: NONE
   #  api.service: NONE
   #  api.connection: NONE
   #  scheduler: NONE
@@ -119,17 +121,17 @@ ethernet:
 
 #captive_portal:
 
-web_server:
-  port: 80
+#web_server:
+#  port: 80
 
 udp:
   - id: door_udp
-    #update_interval: 10s
-    #encryption: "Muddy Waters"
-    #ping_pong_enable: true
-    #rolling_code_enable: true
     port: 18511
-    #listen_address: !secret multicast_address004
+
+packet_transport:
+  - platform: udp
+    id: door_packet_transport
+    udp_id: door_udp
     providers:
       - name: ttgo-poe-001
 
@@ -176,26 +178,26 @@ totp:
 #           }
 #         }
 
-homekit_base:
-  setup_code:  !secret homekit-base
+#homekit_base:
+#  setup_code: '133-71-337'
 
-homekit:
-  lock:
-    - id: ez_hack_lock
+#homekit:
+#  lock:
+#    - id: ez_hack_lock
       #nfc_id: nfc_spi_module
-      on_hk_success:
-        lambda: |-
-          ESP_LOGI("INFO", "IssuerID: %s", x.c_str());
-          ESP_LOGI("INFO", "EndpointID: %s", y.c_str());
-          if (id(ez_hack_lock).state == LOCK_STATE_LOCKED) {
-            id(ez_hack_lock).unlock();
-          } else {
-            id(ez_hack_lock).lock();
-          }
-      on_hk_fail:
-        lambda: |-
-          ESP_LOGI("ERROR", "Authorizing HomeKit lock failed");
-      hk_hw_finish: "SILVER"
+      #on_hk_success:
+      #  lambda: |-
+      #    ESP_LOGI("INFO", "IssuerID: %s", x.c_str());
+      #    ESP_LOGI("INFO", "EndpointID: %s", y.c_str());
+      #    if (id(ez_hack_lock).state == LOCK_STATE_LOCKED) {
+      #      id(ez_hack_lock).unlock();
+      #    } else {
+      #      id(ez_hack_lock).lock();
+      #    }
+      #on_hk_fail:
+      #  lambda: |-
+      #    ESP_LOGI("ERROR", "Authorizing HomeKit lock failed");
+      #hk_hw_finish: "SILVER"
 
 mqtt:
   broker: !secret mqtt_broker
@@ -243,6 +245,36 @@ mqtt:
                       ESP_LOGI("MQTT", "Unknown person or low confidence detection");
                   }
                 }
+              }
+              return true;
+            });
+    - topic: "rtl_433/generic_car_remote/events"
+      then:
+        - lambda: |-
+            auto json = parse_json(x, [](JsonObject root) {
+              if (root["command_name"].is<const char*>() && 
+                  root["id"].is<const char*>() &&
+                  strcmp(root["command_name"], "LOCK") == 0 &&
+                  strcmp(root["id"], "000022e1356c") == 0) {
+                
+                // Car remote lock detected
+                id(person_detected_time) = millis();
+                id(person_at_door).publish_state(true);
+                id(known_person_name) = "Car Remote";
+                id(detected_person_name).publish_state("Car Remote");
+                
+                // Stop any existing timeout script
+                id(detection_timeout).stop();
+                
+                // Light up green LED for car remote lock
+                id(ezset_green_light).turn_on();
+                id(ezset_red_light).turn_off();
+                
+                // Start the detection timeout
+                id(detection_timeout).execute();
+                
+                ESP_LOGI("MQTT", "Car remote lock detected from device: %s", 
+                        root["id"].as<const char*>());
               }
               return true;
             });
@@ -343,7 +375,8 @@ sensor:
     psram:
       name: "Free PSRAM"
 
-  - platform: udp
+  - platform: packet_transport
+    transport_id: door_packet_transport
     id: uptime_check
     name: "UDP Uptime Check"
     provider: ttgo-poe-001
@@ -368,7 +401,8 @@ sensor:
       return millis() - id(last_door_update_time);
 
 binary_sensor:
-  - platform: udp
+  - platform: packet_transport
+    transport_id: door_packet_transport
     id: zone_01  # This is the local ID for the received state
     name: "Remote Door State"
     provider: ttgo-poe-001  # Name of the provider device
@@ -621,9 +655,9 @@ button:
             - delay: 0.1s
       - output.turn_off: motor_right
 
-  - platform: homekit_base
-    factory_reset:
-      name: "Reset Homekit pairings"
+  #- platform: homekit_base
+  #  factory_reset:
+  #    name: "Reset Homekit pairings"
 
 matrix_keypad:
   - id: keypad001
@@ -730,7 +764,7 @@ script:
       #- logger.log: 
       #    format: "Safety timeout triggered - motor stopped"
       #    level: DEBUG
-
+  
   - id: unlock_door
     then:
       - output.turn_on: motor_right
@@ -809,9 +843,6 @@ script:
       - delay: 30s
       - if:
           condition:
-            #and:
-            #  - binary_sensor.is_on: limitswitch2  # Door is unlocked
-            #  - binary_sensor.is_off: zone_01      # Door is closed
             binary_sensor.is_on: limitswitch2
           then:
             - script.execute: lock_door
@@ -1023,7 +1054,6 @@ script:
                 id: ezset_red_light
                 transition_length: 0.1s
             - delay: 200ms
-      #- light.turn_off: ezset_red_light
 
   - id: error_indicator
     then:
@@ -1134,5 +1164,3 @@ output:
 rtttl:
   output: rtttl_out
   gain: 60%
- # on_finished_playback:
-  #  - logger.log: 'RTTTL ended!'
