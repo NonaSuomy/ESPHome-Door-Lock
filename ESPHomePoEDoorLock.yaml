@@ -255,7 +255,7 @@ mqtt:
               if (root["command_name"].is<const char*>() && 
                   root["id"].is<const char*>() &&
                   strcmp(root["command_name"], "LOCK") == 0 &&
-                  strcmp(root["id"], "000022e1356c") == 0) {
+                  strcmp(root["id"], "000012a3456b") == 0) {
                 
                 // Car remote lock detected
                 id(person_detected_time) = millis();
