@@ -9,25 +9,18 @@ You only need the "Base32 Encoded Key" to add to your secret file in esphome. Th
 
 **Features**
 
-[TOTP](https://github.com/NonaSuomy/esphome/tree/totp/esphome/components/totp) Pin Codes
-
-Auto-Lock via UDP to [Sensor Panel](https://github.com/NonaSuomy/ESPHome-Standalone-Rack-Mount-Alarm-Panel)
-
-Delay knob macro for auto-lock
-
-Face Recognition - [Frigate](https://github.com/blakeblackshear/frigate) / [Compreface](https://github.com/exadel-inc/CompreFace) / [DoubleTake](https://github.com/skrashevich/double-take)
-
-RFID [PN523](https://esphome.io/components/binary_sensor/pn532.html) - Yubikey TOTP NFC / Homekit Homekey
-
-[LED Controls](https://esphome.io/components/output/ledc.html)
-
-[Piezo Speaker](https://esphome.io/components/rtttl.html)
-
-[Limit Switches](https://esphome.io/components/switch/)
-
-[Motor Control](https://esphome.io/components/output/ledc.html)
-
-[Car Door Lock Monitor](https://esphome.io/components/mqtt/)
+- [TOTP](https://github.com/NonaSuomy/esphome/tree/totp/esphome/components/totp) Pin Codes
+- Auto-Lock via UDP to [Sensor Panel](https://github.com/NonaSuomy/ESPHome-Standalone-Rack-Mount-Alarm-Panel)
+- Delay knob macro for auto-lock
+- Face Recognition - [Frigate](https://github.com/blakeblackshear/frigate) / [Compreface](https://github.com/exadel-inc/CompreFace) / [DoubleTake](https://github.com/skrashevich/double-take)
+- RFID [PN523](https://esphome.io/components/binary_sensor/pn532.html) - Yubikey TOTP NFC / Homekit Homekey
+- [LED Controls](https://esphome.io/components/output/ledc.html)
+- [Piezo Speaker](https://esphome.io/components/rtttl.html)
+- [Limit Switches](https://esphome.io/components/switch/)
+- [Motor Control](https://esphome.io/components/output/ledc.html)
+- [Car Door Lock Monitor](https://github.com/NonaSuomy/ESPHome-Door-Lock/blob/main/homeassistant_generic_car_remote_bridge.py)
+- Static 4 to 8 digit codes set via HA service
+Developer Tools -> Actions -> ezhacklock_update_user_codes -> codes_list: 12345678,7654321 -> Perform action
 
 **Maybe Features**
 
