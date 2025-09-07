@@ -20,7 +20,14 @@ You only need the "Base32 Encoded Key" to add to your secret file in esphome. Th
 - [Motor Control](https://esphome.io/components/output/ledc.html)
 - [Car Door Lock Monitor](https://github.com/NonaSuomy/ESPHome-Door-Lock/blob/main/homeassistant_generic_car_remote_bridge.py)
 - Static 4 to 8 digit codes set via HA service
+
 Developer Tools -> Actions -> ezhacklock_update_user_codes -> codes_list: 12345678,7654321 -> Perform action
+
+Add these to your ESPHome secret yaml
+```
+aes_key012: "YourRandom32KeyHere" # openssl rand -hex 32
+aes_iv012: "YourRandom16IVHere" # openssl rand -hex 16
+```
 
 **Maybe Features**
 
