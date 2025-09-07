@@ -119,7 +119,8 @@ api:
             rtttl: !lambda 'return song;'
 
     # Service to update the list of user codes. It takes a comma-separated string,
-    # encrypts it, and stores it on the device.
+    # encrypts it, and stores it on the device. 
+    # Developer Tools -> Actions -> ezhacklock_update_user_codes -> codes_list: 12345678,7654321 -> Perform action
     - service: update_user_codes
       variables:
         codes_list: string
@@ -190,6 +191,8 @@ api:
             ESP_LOGI("main", "Successfully saved encrypted user codes. Size: %d bytes", buffer.size());
   
     # Service to read and decrypt the stored codes for debugging purposes.
+    # Developer Tools -> Actions -> ezhacklock_read_decrypted_codes -> Preform action
+    # Codes will show in the ESPHome console.
     - service: read_decrypted_codes
       then:
         - lambda: |-
