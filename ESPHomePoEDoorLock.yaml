@@ -1,6 +1,7 @@
 globals:
   - id: entered_code
     type: std::string
+    restore_value: false
     initial_value: '""'
   - id: last_door_update_time
     type: uint32_t
@@ -23,8 +24,22 @@ globals:
   - id: motor_direction
     type: std::string
     initial_value: '""'
+  # This global variable will hold the encrypted list of codes in flash storage.
+  - id: ${encrypted_storage_id}
+    type: std::string
+    restore_value: yes
+  - id: aes_key_global
+    type: uint8_t[32] # 32 for AES-256 or 16 for AES-128
+    restore_value: true
+  - id: aes_iv_global
+    type: uint8_t[16] # IV is always 16 bytes for AES
+    restore_value: true
 
 substitutions:
+  # This makes the global variable name easier to change if needed
+  encrypted_storage_id: stored_encrypted_codes
+  aes_key: !secret aes_key012
+  aes_iv: !secret aes_iv012
   totp_secret: !secret totp_secret012
 
 esp32:
@@ -33,8 +48,8 @@ esp32:
   framework:
     #type: arduino
     type: esp-idf
-    version: 5.3.1
-    platform_version: 6.8.1
+    version: 5.4.2
+    platform_version: 54.03.21
     sdkconfig_options:
       CONFIG_COMPILER_OPTIMIZATION_SIZE: y
       CONFIG_LWIP_MAX_SOCKETS: "8"
@@ -42,15 +57,26 @@ esp32:
 
 esphome:
   name: ezhacklock
+  comment: ESP32-S3 • RAM 8.4% (27,480/327,680) • Flash 13.4% (1,086,980/8,126,464)
   friendly_name: EZHackLock
   on_boot:
     priority: 600
     then:
       - light.turn_on: motor_enable  # Enable motor at startup
+      - lambda: |-
+          // Get the secret strings and copy them into the global byte arrays.
+          const char* aes_key_str = "${aes_key}";
+          const char* aes_iv_str = "${aes_iv}";
+          memcpy(id(aes_key_global), aes_key_str, 32);
+          memcpy(id(aes_iv_global), aes_iv_str, 16);
   platformio_options:
     build_flags: "-DBOARD_HAS_PSRAM"  
     board_build.arduino.memory_type: qio_opi
-    
+    #lib_deps:
+    #  - "https://github.com/kokke/tiny-AES-c.git"
+  includes:
+    - aes.hpp
+    - <sstream>
 external_components:
 #  - source: github://NonaSuomy/HAP-ESPHome@Fixes
 #    refresh: 0s
@@ -69,7 +95,7 @@ logger:
   level: DEBUG
   #logs:
   #  udp: VERY_VERBOSE
-  #  sensor: NONE
+    #sensor: NONE
   #  api.service: NONE
   #  api.connection: NONE
   #  scheduler: NONE
@@ -91,6 +117,115 @@ api:
       then:
         - rtttl.play:
             rtttl: !lambda 'return song;'
+
+    # Service to update the list of user codes. It takes a comma-separated string,
+    # encrypts it, and stores it on the device.
+    - service: update_user_codes
+      variables:
+        codes_list: string
+      then:
+        - lambda: |-
+            // Validate input
+            if (codes_list.empty()) {
+              ESP_LOGE("main", "Error: codes_list cannot be empty");
+              return;
+            }
+            
+            // Check for invalid characters (only digits and commas allowed)
+            for (char c : codes_list) {
+              if (c != ',' && (c < '0' || c > '9')) {
+                ESP_LOGE("main", "Error: codes_list contains invalid character '%c'. Only digits and commas allowed.", c);
+                return;
+              }
+            }
+            
+            // Check for consecutive commas or leading/trailing commas
+            if (codes_list.front() == ',' || codes_list.back() == ',' || 
+                codes_list.find(",,") != std::string::npos) {
+              ESP_LOGE("main", "Error: Invalid comma placement in codes_list");
+              return;
+            }
+            
+            // Validate individual codes (4-8 digits each)
+            std::stringstream ss(codes_list);
+            std::string code;
+            while (std::getline(ss, code, ',')) {
+              if (code.length() < 4 || code.length() > 8) {
+                ESP_LOGE("main", "Error: Code '%s' must be 4-8 digits long", code.c_str());
+                return;
+              }
+            }
+            
+            ESP_LOGI("main", "Validation passed. Encrypting codes...");
+            
+            struct AES_ctx ctx;
+            uint8_t key[32];
+            uint8_t iv[16];
+
+            memcpy(key, id(aes_key_global), 32);
+            memcpy(iv, id(aes_iv_global), 16);
+            
+            size_t input_len = codes_list.length();
+            size_t padding = 16 - (input_len % 16);
+            size_t buffer_size = input_len + padding;
+            
+            std::vector<uint8_t> buffer(buffer_size);
+            memcpy(buffer.data(), codes_list.c_str(), input_len);
+            for (size_t i = 0; i < padding; i++) {
+              buffer[input_len + i] = padding;
+            }
+
+            AES_init_ctx_iv(&ctx, key, iv);
+            AES_CBC_encrypt_buffer(&ctx, buffer.data(), buffer.size());
+
+            std::string hex_string;
+            hex_string.reserve(buffer.size() * 2);
+            for (uint8_t byte : buffer) {
+              char hex[3];
+              sprintf(hex, "%02x", byte);
+              hex_string += hex;
+            }
+            
+            id(stored_encrypted_codes) = hex_string;
+            ESP_LOGI("main", "Successfully saved encrypted user codes. Size: %d bytes", buffer.size());
+  
+    # Service to read and decrypt the stored codes for debugging purposes.
+    - service: read_decrypted_codes
+      then:
+        - lambda: |-
+            if (id(stored_encrypted_codes).empty()) {
+              ESP_LOGI("main", "No encrypted codes stored.");
+              return;
+            }
+            
+            std::string hex_string = id(stored_encrypted_codes);
+            std::vector<uint8_t> buffer;
+            buffer.reserve(hex_string.length() / 2);
+            
+            for (size_t i = 0; i < hex_string.length(); i += 2) {
+              std::string byte_string = hex_string.substr(i, 2);
+              uint8_t byte = (uint8_t) strtol(byte_string.c_str(), nullptr, 16);
+              buffer.push_back(byte);
+            }
+            
+            struct AES_ctx ctx;
+            uint8_t key[32], iv[16];
+            memcpy(key, id(aes_key_global), 32);
+            memcpy(iv, id(aes_iv_global), 16);
+
+            AES_init_ctx_iv(&ctx, key, iv);
+            AES_CBC_decrypt_buffer(&ctx, buffer.data(), buffer.size());
+
+            size_t len = buffer.size();
+            if (len > 0) {
+              size_t padding = buffer[len - 1];
+              if (padding > 0 && padding <= 16) {
+                len -= padding;
+              }
+            }
+            std::string decrypted(buffer.begin(), buffer.begin() + len);
+            ESP_LOGI("main", "Decrypted codes: %s", decrypted.c_str());
+
 ota:
   - platform: esphome
     password: !secret ota_pass012
@@ -255,7 +390,7 @@ mqtt:
               if (root["command_name"].is<const char*>() && 
                   root["id"].is<const char*>() &&
                   strcmp(root["command_name"], "LOCK") == 0 &&
-                  strcmp(root["id"], "000012a3456b") == 0) {
+                  strcmp(root["id"], "000022e1356c") == 0) {
                 
                 // Car remote lock detected
                 id(person_detected_time) = millis();
@@ -674,34 +809,75 @@ matrix_keypad:
 
 key_collector:
   - id: pincode_reader
-    min_length: 6
-    max_length: 6
+    min_length: 4
+    max_length: 8
     end_keys: "E"
     end_key_required: true
     allowed_keys: "0123456789"
     timeout: 30s
     on_progress:
-      #- logger.log:
-      #    format: "Input progress: '%s', length: %d"
-      #    args: ['x.c_str()', 'x.length()']
       - lambda: |-
           id(entered_code) = x;
     on_result:
-      #- logger.log:
-      #    format: "Input result: '%s', length: %d"
-      #    args: ['x.c_str()', 'x.length()']
       - lambda: |-
-          id(entered_code) = "\"\"";  // Reset the entered code after processing
-      - script.execute: 
-          id: check_totp_code
-          code: !lambda "return x;"
+          std::string user_entered_code = x;
+          id(entered_code) = "";
+          
+          ESP_LOGI("keypad", "User entered code: '%s'", user_entered_code.c_str());
 
+          if (!id(stored_encrypted_codes).empty()) {
+            ESP_LOGI("keypad", "Checking against encrypted codes...");
+            
+            std::string hex_string = id(stored_encrypted_codes);
+            std::vector<uint8_t> buffer;
+            buffer.reserve(hex_string.length() / 2);
+            
+            for (size_t i = 0; i < hex_string.length(); i += 2) {
+              std::string byte_string = hex_string.substr(i, 2);
+              uint8_t byte = (uint8_t) strtol(byte_string.c_str(), nullptr, 16);
+              buffer.push_back(byte);
+            }
+            
+            struct AES_ctx ctx;
+            uint8_t key[32], iv[16];
+            memcpy(key, id(aes_key_global), 32);
+            memcpy(iv, id(aes_iv_global), 16);
+
+            AES_init_ctx_iv(&ctx, key, iv);
+            AES_CBC_decrypt_buffer(&ctx, buffer.data(), buffer.size());
+
+            size_t len = buffer.size();
+            if (len > 0) {
+              size_t padding = buffer[len - 1];
+              if (padding > 0 && padding <= 16) {
+                len -= padding;
+              }
+            }
+            std::string decrypted_list(buffer.begin(), buffer.begin() + len);
+            
+            ESP_LOGI("keypad", "Decrypted list: '%s'", decrypted_list.c_str());
+
+            std::string search_list = "," + decrypted_list + ",";
+            std::string code_to_find = "," + user_entered_code + ",";
+            
+            ESP_LOGI("keypad", "Searching for: '%s' in '%s'", code_to_find.c_str(), search_list.c_str());
+
+            if (search_list.find(code_to_find) != std::string::npos) {
+              ESP_LOGI("keypad", "User code accepted.");
+              id(success_indicator).execute();
+              id(unlock_lock_sequence).execute();
+              return;
+            } else {
+              ESP_LOGI("keypad", "Code not found in list.");
+            }
+          }
+
+          ESP_LOGI("keypad", "Checking TOTP...");
+          id(check_totp_code).execute(user_entered_code);
     on_timeout:
-      #- logger.log:
-      #    format: "Input timeout after: '%s', length: %d"
-      #    args: ['x.c_str()', 'x.length()']
       - lambda: |-
-          id(entered_code) = "\"\"";  // Reset entered code on timeout
+          id(entered_code) = "";
+
 script:
   - id: check_lock_state
     then:
@@ -843,6 +1019,9 @@ script:
       - delay: 30s
       - if:
           condition:
+            #and:
+            #  - binary_sensor.is_on: limitswitch2  # Door is unlocked
+            #  - binary_sensor.is_off: zone_01      # Door is closed
             binary_sensor.is_on: limitswitch2
           then:
             - script.execute: lock_door
@@ -1041,6 +1220,8 @@ script:
       - light.turn_off: ezset_red_light
       - delay: 100ms
       - rtttl.stop
+      #- rtttl.play: '"zelda:d=64,o=6,b=300,c=4, g,a,b,f#,g,a,b,f#,b,c7,d7,b,c7,d7,a,b,f#,a,b,f#,c7,d7,e7,c7,d7,e7,b,f#,f7,c7,d7,e7,e,f#,f7,g7,d7,e7,e,a5,b5,c6"'
+      #- rtttl.play: 'zelda:d=16,o=5,b=75,c=4, g,a,b,f#,g,a,b,f#,b,c6,d6,b,c6,d6,a,b,f#,a,b,f#,c6,d6,e6,c6,d6,e6,b,f#,f6,c6,d6,e6,e,f#,f6,g6,d6,e6,e,a4,b4,c'
       - rtttl.play: 'failure_beep:d=16,o=5,b=100:c,c6,a4,a5,a#4,a#5'
       - repeat:
           count: 3
@@ -1054,6 +1235,7 @@ script:
                 id: ezset_red_light
                 transition_length: 0.1s
             - delay: 200ms
+      #- light.turn_off: ezset_red_light
 
   - id: error_indicator
     then:
@@ -1084,24 +1266,16 @@ script:
 
   - id: check_totp_code
     parameters:
-      code: string
+      code: std::string
     then:
       - lambda: |-
-          id(entered_code) = "\"\"";  // Reset entered code after processing
-          auto current_totp = id(my_totp).get_current_totp();
+          std::string current_totp = id(my_totp).get_current_totp();
           if (code == current_totp) {
-            // Code is correct, toggle lock state
-            if (id(limitswitch2).state) {
-              // Door is currently unlocked, lock it
-              id(success_indicator).execute();
-              id(lock_door).execute();
-            } else {
-              // Door is currently locked, unlock it
-              id(success_indicator).execute();
-              id(unlock_lock_sequence).execute();
-            }
+            ESP_LOGI("keypad", "TOTP code accepted.");
+            id(success_indicator).execute();
+            id(unlock_lock_sequence).execute();
           } else {
-            id(green_led_action).stop();
+            ESP_LOGW("keypad", "Invalid code.");
             id(failure_indicator).execute();
           }
 
@@ -1164,3 +1338,5 @@ output:
 rtttl:
   output: rtttl_out
   gain: 60%
+ # on_finished_playback:
+  #  - logger.log: 'RTTTL ended!'
