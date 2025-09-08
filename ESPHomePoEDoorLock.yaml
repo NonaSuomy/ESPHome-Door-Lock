@@ -26,30 +26,30 @@
 # |                     +-----------------------------------------+                                                |
 # |                     o GND         [COM]    [USB-C]        GND o                                                |
 # |                     o GND                                5Vin o                                                |
-# |                     o GPIO03                           GPIO14 o Motor Left                                     |
-# |                     o GPIO20                           GPIO13 o Motor Right                                    |
-# |        Motor Enable o GPIO21                           GPIO12 o Keypad Col 2                                   |
-# |                     o GPIO47                           GPIO11 o Keypad Col 3                                   |
+# |                     o GPIO19              +---------+  GPIO14 o Motor Left                                     |
+# |                     o GPIO20              |5VIN[]OUT|  GPIO13 o Motor Right                                    |
+# |        Motor Enable o GPIO21              | USB[]OTG|  GPIO12 o Keypad Col 2                                   |
+# |                     o GPIO47              +---------+  GPIO11 o Keypad Col 3                                   |
 # |                     o GPIO48                 [RGB]     GPIO10 o Keypad Row 4                                   |
 # |                     o GPIO45                 [LED]     GPIO09 o Keypad Row 2                                   |
-# |                     o GPIO00                           GPIO45 o                                                |
+# |                     o GPIO00                           GPIO46 o                                                |
 # |                     o GPIO35                           GPIO03 o                                                |
-# |                     o GPIO36                           GPIO08 o Limit SW 2                                     |
+# |                     o GPIO36  [ ] BOOT                 GPIO08 o Limit SW 2                                     |
 # |                     o GPIO37                           GPIO18 o Keypad Row 1                                   |
-# |                     o GPIO38                           GPIO17 o Keypad Row 3                                   |
+# |                     o GPIO38  [ ] RST                  GPIO17 o Keypad Row 3                                   |
 # |            W5500 CS o GPIO39                           GPIO16 o Keypad Col 1                                   |
-# |          W5500 MISO o GPIO40     [ ] BOOT              GPIO15 o Numpad Blue LED                                |
-# |           W5500 INT o GPIO41     [ ] RST               GPIO07 o RTTTL Buzzer                                   |
+# |          W5500 MISO o GPIO40                           GPIO15 o Numpad Blue LED                                |
+# |           W5500 INT o GPIO41                           GPIO07 o RTTTL Buzzer                                   |
 # |           W5500 CLK o GPIO42                           GPIO06 o Limit SW 1                                     |
-# |           W5500 RST o GPIO43 02    +-----------+       GPIO05 o EZSET Green                                    |
-# |          W5500 MOSI o GPIO44 01    |           |       GPIO04 o EZSET Red                                      |
-# |                     o RX           | ESP32-S3  |          RST o                                                |
-# |                     o TX           |           |          3V3 o                                                |
-# |                     o GND          +-----------+          3V3 o                                                |
-# |                     +--------------|| |  _   _ |--------------+                                                |
-# |                                    ||_|_| |_| ||                                                               |
-# |                                    +-----------+                                                               |
-# |                                                                                                                |
+# |                     o GPIO02      +-------------+      GPIO05 o EZSET Green                                    |
+# |                     o GPIO01      |  ESP32-S3   |      GPIO04 o EZSET Red                                      |
+# |          W5500 MOSI o RX GPIO44   |    WROOM-1  |         RST o                                                |
+# |           W5500 RST o TX GPIO43   |    N16R8    |         3V3 o                                                |
+# |                     o GND         |             |         3V3 o                                                |
+# |                     +-------------+-------------+-------------+                                                |
+# |                                   || |  _   _  ||                                                              |
+# |                                   ||_|_| |_| |_||                                                              |
+# |                                   +-------------+                                                              |
 # |                                                                                                                |
 # +----------------------------------------------------------------------------------------------------------------+
 globals:
