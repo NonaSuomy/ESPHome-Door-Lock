@@ -1,3 +1,57 @@
+# +----------------------------------------------------------------------------------------------------------------+
+# |                                                                                                                |
+# |                                                     EZHackLock                                                 |
+# |                                          Smart Lock Controller Firmware                                        |
+# |                                                                                                                |
+# |    This firmware is designed for a custom smart lock system built around the ESP32-S3. It integrates a         |
+# |    keypad, motor driver, limit switches, and status LEDs. The system communicates over a wired PoE             |
+# |    connection (W5500) and interacts with a remote door sensor via UDP for enhanced security logic, such as     |
+# |    auto-locking only when the door is confirmed closed.                                                        |
+# |                                                                                                                |
+# |    Core Features:                                                                                              |
+# |    - Keypad entry with support for multiple user codes and a time-based one-time password (TOTP).              |
+# |    - Secure storage of user codes using AES-256 encryption.                                                    |
+# |    - Remote management of user codes via a Home Assistant service call.                                        |
+# |    - MQTT integration for person detection (via Frigate Face Recognition) and car remote signals               |
+# |      (via rtl_433) to enable context-aware unlocking.                                                          |
+# |    - Physical limit switches to provide definitive locked/unlocked state feedback.                             |
+# |    - Audio-visual feedback using an RTTTL buzzer and multiple LEDs.                                            |
+# |    - Robust state machine to handle locking, unlocking, and jammed states.                                     |
+# |    - Failsafe logic, including motor timeouts and auto-locking.                                                |
+# |                                                                                                                |
+# +----------------------------------------------------------------------------------------------------------------+
+# |                                                                                                                |
+# |                             ESP32-S3-DEVKITC-1 Pinout Diagram                                                  |
+# |                                                                                                                |
+# |                     +-----------------------------------------+                                                |
+# |                     o GND         [COM]    [USB-C]        GND o                                                |
+# |                     o GND                                5Vin o                                                |
+# |                     o GPIO03                           GPIO14 o Motor Left                                     |
+# |                     o GPIO20                           GPIO13 o Motor Right                                    |
+# |        Motor Enable o GPIO21                           GPIO12 o Keypad Col 2                                   |
+# |                     o GPIO47                           GPIO11 o Keypad Col 3                                   |
+# |                     o GPIO48                 [RGB]     GPIO10 o Keypad Row 4                                   |
+# |                     o GPIO45                 [LED]     GPIO09 o Keypad Row 2                                   |
+# |                     o GPIO00                           GPIO45 o                                                |
+# |                     o GPIO35                           GPIO03 o                                                |
+# |                     o GPIO36                           GPIO08 o Limit SW 2                                     |
+# |                     o GPIO37                           GPIO18 o Keypad Row 1                                   |
+# |                     o GPIO38                           GPIO17 o Keypad Row 3                                   |
+# |            W5500 CS o GPIO39                           GPIO16 o Keypad Col 1                                   |
+# |          W5500 MISO o GPIO40     [ ] BOOT              GPIO15 o Numpad Blue LED                                |
+# |           W5500 INT o GPIO41     [ ] RST               GPIO07 o RTTTL Buzzer                                   |
+# |           W5500 CLK o GPIO42                           GPIO06 o Limit SW 1                                     |
+# |           W5500 RST o GPIO43 02    +-----------+       GPIO05 o EZSET Green                                    |
+# |          W5500 MOSI o GPIO44 01    |           |       GPIO04 o EZSET Red                                      |
+# |                     o RX           | ESP32-S3  |          RST o                                                |
+# |                     o TX           |           |          3V3 o                                                |
+# |                     o GND          +-----------+          3V3 o                                                |
+# |                     +--------------|| |  _   _ |--------------+                                                |
+# |                                    ||_|_| |_| ||                                                               |
+# |                                    +-----------+                                                               |
+# |                                                                                                                |
+# |                                                                                                                |
+# +----------------------------------------------------------------------------------------------------------------+
 globals:
   - id: entered_code
     type: std::string
